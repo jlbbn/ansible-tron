@@ -1,0 +1,48 @@
+- name: Revision completa de nodos
+  hosts: all
+  gather_facts: yes
+  tasks:
+
+    - name: Uptime y carga
+      command: uptime
+      register: up
+      changed_when: false
+
+    - name: Memoria
+      command: free -h
+      register: mem
+      changed_when: false
+
+    - name: Disco
+      command: df -h /
+      register: disk
+      changed_when: false
+
+    - name: Top procesos por CPU
+      shell: top -bn1 | head -20
+      register: top
+      changed_when: false
+
+    - name: Servicios tron
+      shell: systemctl list-units 'tron-*' --no-pager --no-legend || true
+      register: tron
+      changed_when: false
+
+    - name: Contenedores docker
+      shell: docker ps --format '{% raw %}{{.Names}} {{.Status}}{% endraw %}' 2>/dev/null || echo "sin docker"
+      register: dock
+      changed_when: false
+
+    - name: Servicios fallidos
+      shell: systemctl list-units --state=failed --no-pager --no-legend || true
+      register: fail
+      changed_when: false
+
+    - name: Reinicio pendiente
+      shell: test -f /var/run/reboot-required && echo "REINICIO PENDIENTE" || echo "sin reinicio pendiente"
+      register: reb
+      changed_when: false
+
+    - name: Resumen
+      debug:
+        msg: "{{ up.stdout_lines + mem.stdout_lines + disk.stdout_lines + top.stdout_lines + tron.stdout_lines + dock.stdout_lines + fail.stdout_lines + reb.stdout_lines }}"
